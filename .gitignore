@@ -1,3 +1,4 @@
 .vscode/
 *~
 duckie-venv/
+gym-duckietown/learning/reinforcement/pytorch/results/
