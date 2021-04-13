@@ -2,11 +2,12 @@ import ast
 import argparse
 import logging
 
+import random
 import os
 import numpy as np
 
 # Duckietown Specific
-from reinforcement.pytorch.ddpg import DDPG
+from reinforcement.pytorch.ddpg import DDPG, DISCRETIZED_ACTIONS
 from reinforcement.pytorch.utils import seed, evaluate_policy, ReplayBuffer
 from utils.env import launch_env
 from utils.wrappers import NormalizeWrapper, ImgWrapper, \
@@ -56,11 +57,12 @@ def _train(args):
     env_counter = 0
     reward = 0
     episode_timesteps = 0
+    action = None
     
     print("Starting training")
     while total_timesteps < args.max_timesteps:
         
-        print("timestep: {} | reward: {}".format(total_timesteps, reward))
+        print("timestep: {} | action: {} | reward: {}".format(total_timesteps, action, reward))
             
         if done:
             if total_timesteps != 0:
@@ -88,18 +90,21 @@ def _train(args):
 
         # Select action randomly or according to policy
         if total_timesteps < args.start_timesteps:
-            action = env.action_space.sample()
+            # action = env.action_space.sample()
+            action = random.choice(DISCRETIZED_ACTIONS)
         else:
             action = policy.predict(np.array(obs))
-            if args.expl_noise != 0:
-                action = (action + np.random.normal(
-                    0,
-                    args.expl_noise,
-                    size=env.action_space.shape[0])
-                          ).clip(env.action_space.low, env.action_space.high)
+            # if args.expl_noise != 0:
+            #     action = (action + np.random.normal(
+            #         0,
+            #         args.expl_noise,
+            #         size=env.action_space.shape[0])
+            #               ).clip(env.action_space.low, env.action_space.high)
 
         # Perform action
         new_obs, reward, done, _ = env.step(action)
+        if action[1] != 0:
+            reward -= 1000 # incentivizes moving fwd over turning
 
         if episode_timesteps >= args.env_timesteps:
             done = True
@@ -125,9 +130,9 @@ if __name__ == '__main__':
     
     # DDPG Args
     parser.add_argument("--seed", default=0, type=int)  # Sets Gym, PyTorch and Numpy seeds
-    parser.add_argument("--start_timesteps", default=1e4, type=int)  # How many time steps purely random policy is run for
+    parser.add_argument("--start_timesteps", default=100, type=int)  # How many time steps purely random policy is run for
     parser.add_argument("--eval_freq", default=5e3, type=float)  # How often (time steps) we evaluate
-    parser.add_argument("--max_timesteps", default=1e6, type=float)  # Max time steps to run environment for
+    parser.add_argument("--max_timesteps", default=500, type=float)  # Max time steps to run environment for
     parser.add_argument("--save_models", action="store_true", default=True)  # Whether or not models are saved
     parser.add_argument("--expl_noise", default=0.1, type=float)  # Std of Gaussian exploration noise
     parser.add_argument("--batch_size", default=32, type=int)  # Batch size for both actor and critic

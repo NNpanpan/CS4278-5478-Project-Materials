@@ -5,6 +5,8 @@ import logging
 import os
 import numpy as np
 
+import time
+
 # Duckietown Specific
 from reinforcement.pytorch.ddpg import DDPG
 from utils.env import launch_env
@@ -30,18 +32,23 @@ def _enjoy():
     max_action = float(env.action_space.high[0])
 
     # Initialize policy
-    policy = DDPG(state_dim, action_dim, max_action, net_type="cnn")
-    policy.load(filename='ddpg', directory='reinforcement/pytorch/models/')
+    # policy = DDPG(state_dim, action_dim, max_action, net_type="cnn")
+    # policy.load(filename='ddpg', directory='reinforcement/pytorch/models/')
 
     obs = env.reset()
     done = False
 
     while True:
         while not done:
-            action = policy.predict(np.array(obs))
+            # action = policy.predict(np.array(obs))
+            action = np.array([1, -1], dtype='f')
             # Perform action
             obs, reward, done, _ = env.step(action)
+            print(action, reward)
             env.render()
+            time.sleep(0.5)
+            exit(0)
+        print("\nRESET\n")
         done = False
         obs = env.reset()        
 

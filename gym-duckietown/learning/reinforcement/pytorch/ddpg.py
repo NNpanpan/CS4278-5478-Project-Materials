@@ -12,6 +12,12 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # Implementation of Deep Deterministic Policy Gradients (DDPG)
 # Paper: https://arxiv.org/abs/1509.02971
 
+DISCRETIZED_ACTIONS = [
+    np.array([0.75, 0.0], dtype='f'), np.array([0.5, 0.0], dtype='f'), 
+    np.array([0.25, 0.0], dtype='f'), np.array([0.1, 0.0], dtype='f'), 
+    # np.array([0.1, 0.25], dtype='f'), np.array([0.1, -0.25], dtype='f'), 
+    np.array([0.1, 1.0], dtype='f'), np.array([0.1, -1.0], dtype='f')]
+
 
 class ActorDense(nn.Module):
     def __init__(self, state_dim, action_dim, max_action):
@@ -58,7 +64,8 @@ class ActorCNN(nn.Module):
         self.dropout = nn.Dropout(.5)
 
         self.lin1 = nn.Linear(flat_size, 512)
-        self.lin2 = nn.Linear(512, action_dim)
+        # self.lin2 = nn.Linear(512, action_dim)
+        self.lin2 = nn.Linear(512, len(DISCRETIZED_ACTIONS))
 
         self.max_action = max_action
 
@@ -77,8 +84,9 @@ class ActorCNN(nn.Module):
 
         # because we don't want our duckie to go backwards
         x = self.lin2(x)
-        x[:, 0] = self.max_action * self.sigm(x[:, 0])  # because we don't want the duckie to go backwards
-        x[:, 1] = self.tanh(x[:, 1])
+        # x[:, 0] = self.max_action * self.sigm(x[:, 0])  # because we don't want the duckie to go backwards
+        # x[:, 1] = self.tanh(x[:, 1])
+        x = F.softmax(x, dim=-1)
 
         return x
 
@@ -178,7 +186,9 @@ class DDPG(object):
             state = torch.FloatTensor(state.reshape(1, -1)).to(device)
         else:
             state = torch.FloatTensor(np.expand_dims(state, axis=0)).to(device)
-        return self.actor(state).cpu().data.numpy().flatten()
+        # return self.actor(state).cpu().data.numpy().flatten()
+        res = self.actor(state).cpu().data.numpy().flatten()
+        return DISCRETIZED_ACTIONS[np.argmax(res)]
 
     def train(self, replay_buffer, iterations, batch_size=64, discount=0.99, tau=0.001):
 
@@ -193,7 +203,13 @@ class DDPG(object):
             reward = torch.FloatTensor(sample["reward"]).to(device)
 
             # Compute the target Q value
-            target_Q = self.critic_target(next_state, self.actor_target(next_state))
+            raw_actions = self.actor_target(next_state)
+            encoded_actions = np.argmax(raw_actions.detach().numpy(), 1)
+            encoded_actions = [DISCRETIZED_ACTIONS[int(x)] for x in encoded_actions]
+            encoded_actions = torch.tensor(encoded_actions)
+
+            # target_Q = self.critic_target(next_state, self.actor_target(next_state))
+            target_Q = self.critic_target(next_state, encoded_actions)
             target_Q = reward + (done * discount * target_Q).detach()
 
             # Get current Q estimate
@@ -208,7 +224,12 @@ class DDPG(object):
             self.critic_optimizer.step()
 
             # Compute actor loss
-            actor_loss = -self.critic(state, self.actor(state)).mean()
+            raw_actions = self.actor(state)
+            encoded_action_ixs = np.argmax(raw_actions.detach().numpy(), axis=1)
+            encoded_actions = [DISCRETIZED_ACTIONS[int(ix)] for ix in encoded_action_ixs]
+            encoded_actions = torch.tensor(encoded_actions)
+
+            actor_loss = -self.critic(state, encoded_actions).mean()
 
             # Optimize the actor
             self.actor_optimizer.zero_grad()
