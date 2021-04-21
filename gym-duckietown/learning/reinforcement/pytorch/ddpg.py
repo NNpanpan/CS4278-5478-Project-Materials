@@ -13,9 +13,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # Paper: https://arxiv.org/abs/1509.02971
 
 DISCRETIZED_ACTIONS = [
-    np.array([0.75, 0.0], dtype='f'), np.array([0.5, 0.0], dtype='f'), 
-    np.array([0.25, 0.0], dtype='f'), np.array([0.1, 0.0], dtype='f'), 
-    # np.array([0.1, 0.25], dtype='f'), np.array([0.1, -0.25], dtype='f'), 
+    np.array([1.0, 0.0], dtype='f'), np.array([0.5, 0.0], dtype='f'), 
     np.array([0.1, 1.0], dtype='f'), np.array([0.1, -1.0], dtype='f')]
 
 
@@ -217,6 +215,7 @@ class DDPG(object):
 
             # Compute critic loss
             critic_loss = F.mse_loss(current_Q, target_Q)
+            print('loss: ', critic_loss)
 
             # Optimize the critic
             self.critic_optimizer.zero_grad()

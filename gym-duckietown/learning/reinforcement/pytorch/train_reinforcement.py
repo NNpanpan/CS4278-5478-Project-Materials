@@ -29,7 +29,7 @@ def _train(args):
     # Wrappers
     env = ResizeWrapper(env)
     env = NormalizeWrapper(env)
-    env = ImgWrapper(env) # to make the images from 160x120x3 into 3x160x120
+    env = ImgWrapper(env, canny=False) # to make the images from 160x120x3 into 3x160x120
     env = ActionWrapper(env)
     env = DtRewardWrapper(env)
     print("Initialized Wrappers")
@@ -103,8 +103,6 @@ def _train(args):
 
         # Perform action
         new_obs, reward, done, _ = env.step(action)
-        if action[1] != 0:
-            reward -= 1000 # incentivizes moving fwd over turning
 
         if episode_timesteps >= args.env_timesteps:
             done = True
@@ -114,7 +112,6 @@ def _train(args):
 
         # Store data in replay buffer
         replay_buffer.add(obs, new_obs, action, reward, done_bool)
-
         obs = new_obs
 
         episode_timesteps += 1
@@ -130,13 +127,13 @@ if __name__ == '__main__':
     
     # DDPG Args
     parser.add_argument("--seed", default=0, type=int)  # Sets Gym, PyTorch and Numpy seeds
-    parser.add_argument("--start_timesteps", default=100, type=int)  # How many time steps purely random policy is run for
+    parser.add_argument("--start_timesteps", default=10000, type=int)  # How many time steps purely random policy is run for
     parser.add_argument("--eval_freq", default=5e3, type=float)  # How often (time steps) we evaluate
-    parser.add_argument("--max_timesteps", default=500, type=float)  # Max time steps to run environment for
+    parser.add_argument("--max_timesteps", default=50000, type=float)  # Max time steps to run environment for
     parser.add_argument("--save_models", action="store_true", default=True)  # Whether or not models are saved
     parser.add_argument("--expl_noise", default=0.1, type=float)  # Std of Gaussian exploration noise
     parser.add_argument("--batch_size", default=32, type=int)  # Batch size for both actor and critic
-    parser.add_argument("--discount", default=0.99, type=float)  # Discount factor
+    parser.add_argument("--discount", default=0.95, type=float)  # Discount factor
     parser.add_argument("--tau", default=0.005, type=float)  # Target network update rate
     parser.add_argument("--policy_noise", default=0.2, type=float)  # Noise added to target policy during critic update
     parser.add_argument("--noise_clip", default=0.5, type=float)  # Range to clip target policy noise

@@ -7,6 +7,8 @@ import numpy as np
 
 import time
 
+from reinforcement.pytorch.utils import canny_lane
+
 # Duckietown Specific
 from reinforcement.pytorch.ddpg import DDPG
 from utils.env import launch_env
@@ -22,7 +24,7 @@ def _enjoy():
     # Wrappers
     env = ResizeWrapper(env)
     env = NormalizeWrapper(env)
-    env = ImgWrapper(env) # to make the images from 160x120x3 into 3x160x120
+    env = ImgWrapper(env, canny=False) # to make the images from 160x120x3 into 3x160x120
     env = ActionWrapper(env)
     env = DtRewardWrapper(env)
     print("Initialized Wrappers")
@@ -37,7 +39,8 @@ def _enjoy():
 
     obs = env.reset()
     done = False
-
+    
+    i = 0
     while True:
         while not done:
             action = policy.predict(np.array(obs))
@@ -45,10 +48,12 @@ def _enjoy():
             obs, reward, done, _ = env.step(action)
             print(action, reward)
             env.render()
-            time.sleep(0.5)
+            time.sleep(0.1)
         print("\nRESET\n")
         done = False
-        obs = env.reset()        
+        obs = env.reset()   
+        np.save('env{}.npz'.format(i), obs)
+        i += 1
 
 if __name__ == '__main__':
     _enjoy()

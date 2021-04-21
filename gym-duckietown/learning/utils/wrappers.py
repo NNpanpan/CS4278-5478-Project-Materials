@@ -2,6 +2,7 @@ import gym
 from gym import spaces
 import numpy as np
 
+from reinforcement.pytorch.utils import canny_lane, draw_lines, find_lines
 
 class ResizeWrapper(gym.ObservationWrapper):
     def __init__(self, env=None, shape=(120, 160, 3)):
@@ -35,8 +36,9 @@ class NormalizeWrapper(gym.ObservationWrapper):
 
 
 class ImgWrapper(gym.ObservationWrapper):
-    def __init__(self, env=None):
+    def __init__(self, env=None, canny=True):
         super(ImgWrapper, self).__init__(env)
+        self.canny = canny
         obs_shape = self.observation_space.shape
         self.observation_space = spaces.Box(
             self.observation_space.low[0, 0, 0],
@@ -45,7 +47,15 @@ class ImgWrapper(gym.ObservationWrapper):
             dtype=self.observation_space.dtype)
 
     def observation(self, observation):
-        return observation.transpose(2, 0, 1)
+        canny_obs = canny_lane(observation)
+        lines = find_lines(canny_obs)
+
+        if self.canny:
+            return np.array([draw_lines(canny_obs, lines)], np.float32)
+        else:
+            obs = np.uint8(observation * 255)
+            obs = draw_lines(obs, lines, itype='rgb')
+            return obs.transpose(2, 0, 1)
 
 
 class DtRewardWrapper(gym.RewardWrapper):
@@ -54,11 +64,11 @@ class DtRewardWrapper(gym.RewardWrapper):
 
     def reward(self, reward):
         if reward == -1000:
-            reward = -10
-        elif reward > 0:
-            reward += 10
-        else:
-            reward += 4
+            reward = -100
+        # elif reward > 0:
+        #     reward += 0
+        # else:
+        #     reward += 0
 
         return reward
 
@@ -71,3 +81,18 @@ class ActionWrapper(gym.ActionWrapper):
     def action(self, action):
         action_ = [action[0], action[1]]
         return action_
+
+class DiscreteWrapper_a6(gym.ActionWrapper):
+    """
+    Discrete actions (left, right, forward) instead of continuous control
+    """
+
+    def __init__(self, env):
+        gym.ActionWrapper.__init__(self, env)
+        self.action_space = spaces.Discrete(6)
+
+    def action(self, action):
+        speed = [0.4, 0.8]
+        angle = [-1., 0., 1.]
+        action_pool = [[speed[i], angle[j]] for i in range(len(speed)) for j in range(len(angle))]
+        return np.array(action_pool[action])
