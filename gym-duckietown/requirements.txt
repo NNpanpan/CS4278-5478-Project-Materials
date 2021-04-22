@@ -10,3 +10,5 @@ cloudpickle
 duckietown_slimremote>=2018.8.2
 pygeometry
 dataclasses
+
+matplotlib

@@ -2,6 +2,8 @@ import argparse
 import numpy as np
 from gym_duckietown.envs import DuckietownEnv
 
+import time
+
 # declare the arguments
 parser = argparse.ArgumentParser()
 
@@ -27,9 +29,11 @@ env.render()
 total_reward = 0
 
 # please remove this line for your own policy
-actions = np.loadtxt('./map5_seed11.txt', delimiter=',')
+# actions = np.loadtxt('./map5_seed11.txt', delimiter=',')
+actions = np.loadtxt('./test.txt', delimiter=',')
 
 for (speed, steering) in actions:
+    print(speed, steering)
 
     obs, reward, done, info = env.step([speed, steering])
     total_reward += reward
@@ -37,8 +41,10 @@ for (speed, steering) in actions:
     print('Steps = %s, Timestep Reward=%.3f, Total Reward=%.3f' % (env.step_count, reward, total_reward))
 
     env.render()
+    time.sleep(1)
+
 
 print("Total Reward", total_reward)
 
 # dump the controls using numpy
-np.savetxt('./map5_seed11.txt', actions, delimiter=',')
+# np.savetxt('./map5_seed11.txt', actions, delimiter=',')

@@ -35,7 +35,7 @@ class NormalizeWrapper(gym.ObservationWrapper):
             return (obs - self.obs_lo) / (self.obs_hi - self.obs_lo)
 
 
-class ImgWrapper(gym.ObservationWrapper):
+class ImgWrapperCanny(gym.ObservationWrapper):
     def __init__(self, env=None, canny=True):
         super(ImgWrapper, self).__init__(env)
         self.canny = canny
@@ -56,6 +56,19 @@ class ImgWrapper(gym.ObservationWrapper):
             obs = np.uint8(observation * 255)
             obs = draw_lines(obs, lines, itype='rgb')
             return obs.transpose(2, 0, 1)
+
+class ImgWrapper(gym.ObservationWrapper):
+    def __init__(self, env=None):
+        super(ImgWrapper, self).__init__(env)
+        obs_shape = self.observation_space.shape
+        self.observation_space = spaces.Box(
+            self.observation_space.low[0, 0, 0],
+            self.observation_space.high[0, 0, 0],
+            [obs_shape[2], obs_shape[0], obs_shape[1]],
+            dtype=self.observation_space.dtype)
+
+    def observation(self, observation):
+        return observation.transpose(2, 0, 1)
 
 
 class DtRewardWrapper(gym.RewardWrapper):
