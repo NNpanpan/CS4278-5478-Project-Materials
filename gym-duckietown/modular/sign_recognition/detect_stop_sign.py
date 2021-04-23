@@ -3,6 +3,7 @@ import torch
 import numpy as np
 import cv2 as cv
 import imutils
+import os, sys
 
 # class LogisticRegression(torch.nn.Module):
 #     def __init__(self):
@@ -30,7 +31,8 @@ class LogisticRegression(torch.nn.Module):
 
 model = LogisticRegression()
 # model.load_state_dict(torch.load('RedModel.pt', map_location=torch.device('cpu')))
-model.load_state_dict(torch.load('my_model.pt', map_location=torch.device('cpu')))
+fpath = os.path.join(sys.path[0], "gym-duckietown/modular/sign_recognition/my_model.pt")
+model.load_state_dict(torch.load(fpath, map_location=torch.device('cpu')))
 
 def convert_image(img):
     image = torch.from_numpy(img).float()
