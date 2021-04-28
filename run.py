@@ -16,6 +16,7 @@ parser.add_argument('--max_steps', type=int, default=1500, help='max_steps')
 parser.add_argument('--map-name', default='map4')
 parser.add_argument('--seed', type=int, default=2, help='random seed')
 parser.add_argument('--load-file', type=str, default=None)
+parser.add_argument('--load-actions', type=str, default=None)
 args = parser.parse_args()
 
 print('Loading map {} with seed {}'.format(args.map_name, args.seed))
@@ -35,7 +36,7 @@ max_action = float(env.action_space.high[0])
 obs = env.reset()
 print(obs.shape)
 
-env.render()
+# env.render()
 
 total_reward = 0
 
@@ -47,10 +48,27 @@ if args.load_file is not None:
 else:
     actions = []
 
-policy = Controller(has_pit=False, has_intersection=True, has_stop_sign=True) \
+policy = Controller(has_pit=False, has_intersection=False, has_stop_sign=True) \
     if not from_file else None
 
+if not from_file:
+    if args.map_name == 'map1':
+        policy = Controller(has_pit=True, has_intersection=False, has_stop_sign=False)
+    
+    elif args.map_name == 'map3':
+        policy = Controller(has_pit=False, has_intersection=True, has_stop_sign=True)
+
+    else:
+        # map2, map4, map5
+        policy = policy = Controller(has_pit=False, has_intersection=False, has_stop_sign=True)
+
+if args.load_actions and policy is not None:
+    loaded_actions = np.loadtxt(args.load_actions, delimiter=',')
+    policy.load_actions(loaded_actions)
+
 done = False
+
+printed_msg = False
 
 if from_file:
     for (speed, steering) in actions:
@@ -68,18 +86,38 @@ else:
     try:
         while not done:
             rgbobs = env.render('rgb_array')
+            # if env.step_count == len(loaded_actions):
+            #     policy.turn_left_incoming = policy.turn_right_incoming = False
+            #     policy.seeing_stop = True
+            #     policy.remaining_steps_of_slow = 0
 
-            action = policy.predict(rgb_array=np.array(rgbobs), raw_obs=obs)
+            if env.map_name == 'map5':
+                print('map5 predict function') if not printed_msg else None
+                action = policy.predict5(rgb_array=np.array(rgbobs), raw_obs=obs)
+            elif env.map_name == 'map4':
+                print('map4 predict function') if not printed_msg else None
+                action = policy.predict4(rgb_array=np.array(rgbobs), raw_obs=obs)
+            elif env.map_name == 'map3':
+                print('map3 predict function') if not printed_msg else None
+                action = policy.predict(rgb_array=np.array(rgbobs), raw_obs=obs)
+            else:
+                print('default predict function') if not printed_msg else None
+                action = policy.predict(rgb_array=np.array(rgbobs), raw_obs=obs)
+            
+            printed_msg = True
+
             print('--Action: ', action)
             actions.append(action)
 
             # Perform action
             obs, reward, done, _ = env.step(np.array(action))
-            env.render()
+            # env.render()
 
             total_reward += reward
 
             print('Steps = %s, Timestep Reward=%.3f, Total Reward=%.3f\n' % (env.step_count, reward, total_reward))
+            # if reward < -1.5 and policy.middle:
+            #     break
     except:
         print("Unexpected error:", sys.exc_info()[0])
     finally:
